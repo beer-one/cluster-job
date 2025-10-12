@@ -322,6 +322,16 @@ func (r *ClusterJobReconciler) scheduleNextNodeGroup(ctx context.Context, cluste
 					GenerateName: fmt.Sprintf("%s-%s-%d-", clusterJob.Name, nextGroup.Name, index),
 					Namespace:    clusterJob.Namespace,
 					Labels:       labelSelector,
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         clusterJob.APIVersion,
+							Kind:               clusterJob.Kind,
+							Name:               clusterJob.Name,
+							UID:                clusterJob.ObjectMeta.UID,
+							Controller:         &[]bool{true}[0],
+							BlockOwnerDeletion: &[]bool{true}[0],
+						},
+					},
 				},
 				Spec: jobSpec,
 			}
@@ -335,28 +345,6 @@ func (r *ClusterJobReconciler) scheduleNextNodeGroup(ctx context.Context, cluste
 	}
 
 	clusterJob.SaveRunningStatus(nextIndex, nextGroup.Name, clusterJob.Status.WaitGroups-1)
-	return nil
-}
-
-func (r *ClusterJobReconciler) cleanup(ctx context.Context, clusterJob *clusterbatchv1alpha.ClusterJob) error {
-	var jobList batchv1.JobList
-
-	labelSelector := client.MatchingLabels{
-		ClusterJobNameLabel:  clusterJob.Name,
-		ClusterJobGroupLabel: clusterJob.Status.CurrentGroup,
-	}
-
-	// ClusterJob이 만든 Job 조회
-	if err := r.List(ctx, &jobList, client.InNamespace(clusterJob.Namespace), labelSelector); err != nil {
-		return err
-	}
-
-	for _, job := range jobList.Items {
-		if err := r.Delete(ctx, &job, &client.DeleteOptions{GracePeriodSeconds: new(int64)}); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
