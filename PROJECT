@@ -8,4 +8,14 @@ layout:
 - go.kubebuilder.io/v4
 projectName: cluster-job
 repo: github.com/beer-one/cluster-job
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: beer1.com
+  group: cluster-batch
+  kind: ClusterJob
+  path: github.com/beer-one/cluster-job/api/v1alpha
+  version: v1alpha
 version: "3"

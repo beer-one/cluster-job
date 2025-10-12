@@ -1,0 +1,15 @@
+apiVersion: cluster-batch.beer1.com/v1alpha
+kind: ClusterJob
+metadata:
+  labels:
+    app.kubernetes.io/name: cluster-job
+    app.kubernetes.io/managed-by: kustomize
+  name: clusterjob-per-node-group
+spec:
+  strategy: 
+    type: perNodeGroup
+    perNodeGroup:
+      ignoreNull: true
+      groupLabel: kubernetes.io/hostname
+  failureStrategy: keepgoing
+    

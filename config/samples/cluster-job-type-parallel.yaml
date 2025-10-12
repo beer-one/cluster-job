@@ -1,0 +1,26 @@
+apiVersion: cluster-batch.beer1.com/v1alpha
+kind: ClusterJob
+metadata:
+  labels:
+    app.kubernetes.io/name: cluster-job
+    app.kubernetes.io/managed-by: kustomize
+  name: clusterjob-parallel
+spec:
+  strategy: 
+    type: parallel
+    parallel:
+      order: alphabetical
+      size: 2
+  failureStrategy: keepgoing
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox:latest
+            # command: ["sh", "-c", "echo 'This job will fail'; exit 1"]
+            command: ["sh", "-c", "echo 'hello world'"]
+          restartPolicy: Never
+    
