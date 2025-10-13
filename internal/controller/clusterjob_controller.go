@@ -160,8 +160,10 @@ func (r *ClusterJobReconciler) makeNodeGroups(ctx context.Context, clusterJob *c
 	// 전략에 따른 노드 그룹 생성
 	var nodeGroups []clusterbatchv1alpha.NodeGroupStatus
 	switch clusterJob.Spec.Strategy.Type {
-	case "parallel":
-		nodeGroups, err = createParallelNodeGroups(ctx, clusterJob, nodeList)
+	case "all":
+		nodeGroups, err = createAllNodeGroups(ctx, clusterJob, nodeList)
+	case "batch":
+		nodeGroups, err = createBatchNodeGroups(ctx, clusterJob, nodeList)
 	case "perNodeGroup":
 		nodeGroups, err = createPerNodeGroupGroups(ctx, clusterJob, nodeList)
 	default:
@@ -193,15 +195,30 @@ func (r *ClusterJobReconciler) getNodeList(ctx context.Context) (*corev1.NodeLis
 	return &nodeList, nil
 }
 
-// createParallelNodeGroups는 parallel 전략에 따라 노드 그룹을 생성합니다.
-// parallel 전략은 정해진 크기(Parallel.Size)를 기준으로 노드그룹을 묶어서 생성합니다.
-// order가 random인 경우 노드 이름을 무작위로 섞고, alphabetical인 경우 노드그룹을 알파벳 순으로 묶어서 생성합니다.
-func createParallelNodeGroups(ctx context.Context, clusterJob *clusterbatchv1alpha.ClusterJob, nodeList *corev1.NodeList) ([]clusterbatchv1alpha.NodeGroupStatus, error) {
+// createAllNodeGroups는 All 전략에 따라 노드 그룹을 생성합니다.
+func createAllNodeGroups(ctx context.Context, clusterJob *clusterbatchv1alpha.ClusterJob, nodeList *corev1.NodeList) ([]clusterbatchv1alpha.NodeGroupStatus, error) {
 	var logger = logf.FromContext(ctx)
-	logger.Info("Creating parallel node groups", "namespace", clusterJob.Namespace, "name", clusterJob.Name)
+	logger.Info("Creating Batch node groups", "namespace", clusterJob.Namespace, "name", clusterJob.Name)
+	// 노드 이름 추출
+	nodeNames := extractNodeNames(nodeList)
+	// 그룹 생성
+	var nodeGroups []clusterbatchv1alpha.NodeGroupStatus
 
-	size := clusterJob.Spec.Strategy.Parallel.Size
-	order := clusterJob.Spec.Strategy.Parallel.Order
+	group := clusterJob.CreateNodeGroup("all", nodeNames)
+	nodeGroups = append(nodeGroups, group)
+
+	return nodeGroups, nil
+}
+
+// createBatchNodeGroups는 Batch 전략에 따라 노드 그룹을 생성합니다.
+// Batch 전략은 정해진 크기(Batch.Size)를 기준으로 노드그룹을 묶어서 생성합니다.
+// order가 random인 경우 노드 이름을 무작위로 섞고, alphabetical인 경우 노드그룹을 알파벳 순으로 묶어서 생성합니다.
+func createBatchNodeGroups(ctx context.Context, clusterJob *clusterbatchv1alpha.ClusterJob, nodeList *corev1.NodeList) ([]clusterbatchv1alpha.NodeGroupStatus, error) {
+	var logger = logf.FromContext(ctx)
+	logger.Info("Creating Batch node groups", "namespace", clusterJob.Namespace, "name", clusterJob.Name)
+
+	size := clusterJob.Spec.Strategy.Batch.Size
+	order := clusterJob.Spec.Strategy.Batch.Order
 
 	// 노드 이름 추출
 	nodeNames := extractNodeNames(nodeList)

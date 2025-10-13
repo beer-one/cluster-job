@@ -40,21 +40,21 @@ type ClusterJobSpec struct {
 
 // ClusterJobStrategy holds job execution strategy details
 type ClusterJobStrategy struct {
-	// Type specifies which strategy is used: parallel or perNodeGroup
-	// +kubebuilder:validation:Enum=parallel;perNodeGroup
+	// Type specifies which strategy is used: batch, perNodeGroup or all
+	// +kubebuilder:validation:Enum=batch;perNodeGroup;all
 	Type string `json:"type"`
 
-	// Parallel execution strategy (valid only when Type=parallel)
+	// Batch execution strategy (valid only when Type=batch)
 	// +optional
-	Parallel *ParallelStrategy `json:"parallel,omitempty"`
+	Batch *BatchStrategy `json:"batch,omitempty"`
 
 	// PerNodeGroup execution strategy (valid only when Type=perNodeGroup)
 	// +optional
 	PerNodeGroup *PerNodeGroupStrategy `json:"perNodeGroup,omitempty"`
 }
 
-// ParallelStrategy defines fields for parallel execution
-type ParallelStrategy struct {
+// BatchStrategy defines fields for parallel execution
+type BatchStrategy struct {
 	// Order defines grouping order (random or alphabetical)
 	// +kubebuilder:validation:Enum=random;alphabetical
 	Order string `json:"order"`

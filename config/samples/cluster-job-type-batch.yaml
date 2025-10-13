@@ -4,11 +4,11 @@ metadata:
   labels:
     app.kubernetes.io/name: cluster-job
     app.kubernetes.io/managed-by: kustomize
-  name: clusterjob-parallel
+  name: clusterjob-batch
 spec:
   strategy: 
-    type: parallel
-    parallel:
+    type: batch
+    batch:
       order: alphabetical
       size: 2
   failureStrategy: keepgoing
@@ -20,7 +20,6 @@ spec:
           containers:
           - name: hello
             image: busybox:latest
-            # command: ["sh", "-c", "echo 'This job will fail'; exit 1"]
             command: ["sh", "-c", "echo 'hello world'"]
           restartPolicy: Never
     
