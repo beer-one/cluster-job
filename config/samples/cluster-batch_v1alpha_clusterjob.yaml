@@ -1,0 +1,9 @@
+apiVersion: cluster-batch.beer1.com/v1alpha
+kind: ClusterJob
+metadata:
+  labels:
+    app.kubernetes.io/name: cluster-job
+    app.kubernetes.io/managed-by: kustomize
+  name: clusterjob-sample
+spec:
+  # TODO(user): Add fields here
