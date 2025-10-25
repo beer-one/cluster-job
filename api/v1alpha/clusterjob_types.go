@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha
 
 import (
+	"fmt"
+
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -102,8 +104,8 @@ type ClusterJobStatus struct {
 	// NodeGroups stores execution unit groups and their member nodes
 	NodeGroups []NodeGroupStatus `json:"nodeGroups,omitempty"`
 
-	// This status is phase of ClustertJob, phase is one of pending, running, completed, or failed.
-	// +kubebuilder:validation:Enum=Pending;Running;Completed;Failed
+	// This status is phase of ClustertJob, phase is one of prepering, running, completed, or failed.
+	// +kubebuilder:validation:Enum=Prepering;Running;Completed;Failed
 	Phase           string `json:"phase,omitempty"`
 	CurrentGroup    string `json:"currentGroup,omitempty"`
 	CurrentIndex    int    `json:"currentIndex"`
@@ -149,4 +151,36 @@ type ClusterJobList struct {
 
 func init() {
 	SchemeBuilder.Register(&ClusterJob{}, &ClusterJobList{})
+}
+
+func (cj *ClusterJob) UpdatePreperingStatus(nodeGroups []NodeGroupStatus) {
+	cj.Status.Phase = "Prepering"
+	cj.Status.CurrentIndex = 0
+	cj.Status.CurrentGroup = nodeGroups[0].Name
+	cj.Status.WaitGroups = len(nodeGroups)
+	cj.Status.NodeGroups = nodeGroups
+}
+
+func (cj *ClusterJob) UpdateRunningStatus() {
+	cj.Status.Phase = "Running"
+	cj.Status.WaitGroups = len(cj.Status.NodeGroups) - cj.Status.CurrentIndex - 1
+}
+
+func (cj *ClusterJob) UpdateCompletedStatus() {
+	if cj.Status.FailedGroups > 0 {
+		cj.UpdateFailedStatus()
+	} else {
+		cj.Status.Phase = "Completed"
+	}
+}
+
+func (cj *ClusterJob) UpdateFailedStatus() {
+	cj.Status.Phase = "Failed"
+}
+
+func (cj *ClusterJob) CreateNodeGroup(groupSuffix string, nodes []string) NodeGroupStatus {
+	return NodeGroupStatus{
+		Name:  fmt.Sprintf("%s-%s", cj.Name, groupSuffix),
+		Nodes: nodes,
+	}
 }

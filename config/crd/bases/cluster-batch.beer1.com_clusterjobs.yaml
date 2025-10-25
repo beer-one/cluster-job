@@ -4037,7 +4037,7 @@ spec:
                 type: array
               phase:
                 enum:
-                - Pending
+                - Prepering
                 - Running
                 - Completed
                 - Failed
