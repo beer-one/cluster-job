@@ -1,0 +1,17 @@
+apiVersion: cluster-batch.beer1.com/v1alpha
+kind: ClusterJob
+metadata:
+  name: clusterjob-sample
+spec:
+  strategy:
+    type: all
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox:latest
+            command: ["sh", "-c", "echo 'hello world'"]
+          restartPolicy: Never

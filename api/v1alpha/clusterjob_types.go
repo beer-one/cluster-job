@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha
 
 import (
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,14 +26,55 @@ import (
 
 // ClusterJobSpec defines the desired state of ClusterJob
 type ClusterJobSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
+	// Strategy defines how the job should be executed
+	Strategy *ClusterJobStrategy `json:"strategy"`
 
-	// foo is an example field of ClusterJob. Edit clusterjob_types.go to remove/update
+	// FailureStrategy defines how to handle failures (keepgoing or exit)
+	// +kubebuilder:validation:Enum=keepgoing;exit
+	// +kubebuilder:default:=keepgoing
+	FailureStrategy string `json:"failureStrategy,omitempty"`
+
+	// +required
+	JobTemplate *batchv1.JobTemplateSpec `json:"jobTemplate"`
+}
+
+// ClusterJobStrategy holds job execution strategy details
+type ClusterJobStrategy struct {
+	// Type specifies which strategy is used: batch, perNodeGroup or all
+	// +kubebuilder:validation:Enum=batch;perNodeGroup;all
+	Type string `json:"type"`
+
+	// Batch execution strategy (valid only when Type=batch)
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	Batch *BatchStrategy `json:"batch,omitempty"`
+
+	// PerNodeGroup execution strategy (valid only when Type=perNodeGroup)
+	// +optional
+	PerNodeGroup *PerNodeGroupStrategy `json:"perNodeGroup,omitempty"`
+}
+
+// BatchStrategy defines fields for parallel execution
+type BatchStrategy struct {
+	// Order defines grouping order (random or alphabetical)
+	// +kubebuilder:validation:Enum=random;alphabetical
+	// +kubebuilder:default:=random
+	Order string `json:"order,omitempty"`
+
+	// Size defines group size for parallel execution
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:default:=1
+	Size int32 `json:"size,omitempty"`
+}
+
+// PerNodeGroupStrategy defines fields for per-node-group execution
+type PerNodeGroupStrategy struct {
+	// GroupLabel is the node label key to use for grouping
+	// +required
+	GroupLabel string `json:"groupLabel"`
+
+	// IgnoreNull specifies whether to ignore nodes without the groupLabel (true),
+	// or treat them as a separate group (false)
+	IgnoreNull bool `json:"ignoreNull,omitempty"`
 }
 
 // ClusterJobStatus defines the observed state of ClusterJob.
@@ -56,6 +98,24 @@ type ClusterJobStatus struct {
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// NodeGroups stores execution unit groups and their member nodes
+	NodeGroups []NodeGroupStatus `json:"nodeGroups,omitempty"`
+
+	// This status is phase of ClustertJob, phase is one of pending, running, completed, or failed.
+	// +kubebuilder:validation:Enum=Pending;Running;Completed;Failed
+	Phase           string `json:"phase,omitempty"`
+	CurrentGroup    string `json:"currentGroup,omitempty"`
+	CurrentIndex    int    `json:"currentIndex"`
+	CompletedGroups int    `json:"completedGroups"`
+	FailedGroups    int    `json:"failedGroups"`
+	WaitGroups      int    `json:"waitGroups"`
+}
+
+// NodeGroupStatus represents a single execution unit group in status
+type NodeGroupStatus struct {
+	Name  string   `json:"name"`  // Nodegroup name
+	Nodes []string `json:"nodes"` // Nodes belonging to that group
 }
 
 // +kubebuilder:object:root=true
