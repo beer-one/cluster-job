@@ -116,9 +116,11 @@ func (r *ClusterJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 	case "Completed":
-		// TODO: Handle Completed phase
+		logger.Info("ClusterJob completed", "namespace", clusterJob.Namespace, "name", clusterJob.Name)
+		return ctrl.Result{}, nil
 	case "Failed":
-		// TODO: Handle Running phase
+		logger.Info("ClusterJob failed", "namespace", clusterJob.Namespace, "name", clusterJob.Name)
+		return ctrl.Result{}, nil
 	default:
 		// TODO: Handle Exception
 	}
@@ -324,7 +326,7 @@ func (r *ClusterJobReconciler) scheduleCurrentNodeGroup(ctx context.Context, clu
 		jobCreatedNodes[job.ObjectMeta.Labels[ClusterJobNodeLabel]] = true
 	}
 
-	errors := 0 
+	errors := 0
 
 	for index, node := range nextGroup.Nodes {
 
@@ -368,7 +370,7 @@ func (r *ClusterJobReconciler) scheduleCurrentNodeGroup(ctx context.Context, clu
 			logger.Info("Job is created.", "created", "namespace", clusterJob.Namespace, "name", clusterJob.Name, "jobName", job.ObjectMeta.GenerateName, "node", node)
 		}
 	}
-	
+
 	// Job 생성 에러가 없는 경우에만 Running Status로 변경
 	if errors == 0 {
 		clusterJob.UpdateRunningStatus()
