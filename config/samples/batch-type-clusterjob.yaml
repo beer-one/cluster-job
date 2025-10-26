@@ -1,0 +1,20 @@
+apiVersion: cluster-batch.beer1.com/v1alpha
+kind: ClusterJob
+metadata:
+  name: batch-type-job
+spec:
+  strategy:
+    type: batch
+    batch:
+      size: 2
+  failureStrategy: exit
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox:latest
+            command: ["sh", "-c", "exit 1"]
+          restartPolicy: Never

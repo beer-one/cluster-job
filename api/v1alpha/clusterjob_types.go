@@ -123,6 +123,8 @@ type NodeGroupStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Phase of ClsterJob"
+// +kubebuilder:printcolumn:name="CurrentGroup",type="string",JSONPath=".status.currentGroup",description="The group in which the ClusterJob is currently running"
 // ClusterJob is the Schema for the clusterjobs API
 type ClusterJob struct {
 	metav1.TypeMeta `json:",inline"`
