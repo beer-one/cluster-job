@@ -161,6 +161,12 @@ func (cj *ClusterJob) UpdatePreperingStatus(nodeGroups []NodeGroupStatus) {
 	cj.Status.NodeGroups = nodeGroups
 }
 
+func (cj *ClusterJob) PrepareNextGroup() {
+	cj.Status.Phase = "Prepering"
+	cj.Status.CurrentIndex = cj.Status.CurrentIndex + 1
+	cj.Status.CurrentGroup = cj.Status.NodeGroups[cj.Status.CurrentIndex].Name
+}
+
 func (cj *ClusterJob) UpdateRunningStatus() {
 	cj.Status.Phase = "Running"
 	cj.Status.WaitGroups = len(cj.Status.NodeGroups) - cj.Status.CurrentIndex - 1

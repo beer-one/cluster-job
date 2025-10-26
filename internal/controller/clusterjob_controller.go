@@ -48,6 +48,12 @@ type ClusterJobReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+type GroupJobStatus struct {
+	TotalCount     int	// 현재 실행 노드 그룹의 총 잡 갯수
+	FailedCount    int	// 현재 실행 노드 그룹에서 실패한 잡 갯수
+	CompletedCount int 	// 현재 실행 노드 그룹에서 성공한 잡 갯수
+}
+
 // +kubebuilder:rbac:groups=cluster-batch.beer1.com,resources=clusterjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cluster-batch.beer1.com,resources=clusterjobs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cluster-batch.beer1.com,resources=clusterjobs/finalizers,verbs=update
@@ -90,7 +96,25 @@ func (r *ClusterJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{RequeueAfter: 10 * time.Second}, err
 		}
 	case "Running":
-		// TODO: Handle Running phase
+		status, err := r.checkClusterJobGroupStatus(ctx, &clusterJob)
+
+		if err != nil {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, err
+		}
+
+		switch status.TotalCount {
+		case status.CompletedCount: // 현재 그룹잡 모두 성공적으로 완료
+			clusterJob.PrepareNextGroup()
+		case status.CompletedCount + status.FailedCount: // 현재 그룹잡 모두 실행은 완료
+			if clusterJob.Spec.FailureStrategy == "keepgoing" {
+				clusterJob.PrepareNextGroup()
+			} else {
+				clusterJob.UpdateFailedStatus()
+				logger.Info("ClusterJob failed", "namespace", clusterJob.Namespace, "name", clusterJob.Name, "group", clusterJob.Status.CurrentGroup, "failureStrategy", clusterJob.Spec.FailureStrategy)
+			}
+		default: // 그룹이 생성한 잡 중 실행완료되지 않은 잡이 있는 경우
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
 	case "Completed":
 		// TODO: Handle Completed phase
 	case "Failed":
@@ -351,6 +375,47 @@ func (r *ClusterJobReconciler) scheduleCurrentNodeGroup(ctx context.Context, clu
 	}
 
 	return nil
+}
+
+// ClusterJob의 현재 그룹의 잡 실행 상태를 취합하여 결과를 반환하는 함수
+// GroupJobStatus는 그룹 내 잡의 총 개수, 성공 개수, 실패 개수를 포함하는 구조체
+func (r *ClusterJobReconciler) checkClusterJobGroupStatus(ctx context.Context, clusterJob *clusterbatchv1alpha.ClusterJob) (GroupJobStatus, error) {
+	// var logger = logf.FromContext(ctx)
+
+	var jobList batchv1.JobList
+
+	labelSelector := client.MatchingLabels{
+		ClusterJobNameLabel:  clusterJob.Name,
+		ClusterJobGroupLabel: clusterJob.Status.CurrentGroup,
+	}
+
+	// ClusterJob이 만든 Job 조회
+	if err := r.List(ctx, &jobList, client.InNamespace(clusterJob.Namespace), labelSelector); err != nil {
+		return GroupJobStatus{}, err
+	}
+
+	completedCount := 0
+	failedCount := 0
+
+	// 현재 실행 그룹에서 실행 중인 잡의 성공/실패 여부를 확인한다.
+	// 성공 갯수는 job.Status.Succeeded로 파악이 가능
+	// 실패 갯수는 job.Status.Failed이 job.Spec.BackoffLimit + 1인 경우이다.
+	for _, job := range jobList.Items {
+
+		backoffLimit := job.Spec.BackoffLimit
+		succeeded := job.Status.Succeeded
+		failed := job.Status.Failed
+
+		if succeeded > 0 {
+			completedCount += 1
+		}
+
+		if failed == *backoffLimit+1 {
+			failedCount += 1
+		}
+	}
+
+	return GroupJobStatus{TotalCount: len(jobList.Items), CompletedCount: completedCount, FailedCount: failedCount}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
