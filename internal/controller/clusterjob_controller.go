@@ -49,9 +49,9 @@ type ClusterJobReconciler struct {
 }
 
 type GroupJobStatus struct {
-	TotalCount     int	// 현재 실행 노드 그룹의 총 잡 갯수
-	FailedCount    int	// 현재 실행 노드 그룹에서 실패한 잡 갯수
-	CompletedCount int 	// 현재 실행 노드 그룹에서 성공한 잡 갯수
+	TotalCount     int // 현재 실행 노드 그룹의 총 잡 갯수
+	FailedCount    int // 현재 실행 노드 그룹에서 실패한 잡 갯수
+	CompletedCount int // 현재 실행 노드 그룹에서 성공한 잡 갯수
 }
 
 // +kubebuilder:rbac:groups=cluster-batch.beer1.com,resources=clusterjobs,verbs=get;list;watch;create;update;patch;delete
@@ -104,10 +104,10 @@ func (r *ClusterJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		switch status.TotalCount {
 		case status.CompletedCount: // 현재 그룹잡 모두 성공적으로 완료
-			clusterJob.PrepareNextGroup()
+			clusterJob.PrepareNextGroup(true)
 		case status.CompletedCount + status.FailedCount: // 현재 그룹잡 모두 실행은 완료
 			if clusterJob.Spec.FailureStrategy == "keepgoing" {
-				clusterJob.PrepareNextGroup()
+				clusterJob.PrepareNextGroup(false)
 			} else {
 				clusterJob.UpdateFailedStatus()
 				logger.Info("ClusterJob failed", "namespace", clusterJob.Namespace, "name", clusterJob.Name, "group", clusterJob.Status.CurrentGroup, "failureStrategy", clusterJob.Spec.FailureStrategy)
